@@ -19,7 +19,8 @@ for route in route_details:
 # execute routes
 if len(route_list) > 0:
     try:
-        w2output('Queuing {} routes for disconnection'.format(len(route_list)/2))
+        w2output(reservationId=res_id,
+                 message='Queuing {} routes for disconnection'.format(len(route_list)/2))
         cs_helper.get_api_session().DisconnectRoutesInReservation(reservationId=res_id, endpoints=route_list)
     except CloudShellAPIError as err:
         w2output(reservationId=res_id, message=err.message)

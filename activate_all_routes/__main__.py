@@ -23,7 +23,8 @@ for route in route_details:
 # execute routes
 if len(bi_dir) > 0:
     try:
-        w2output('Queuing {} Bi-Dir routes for connection'.format(len(bi_dir)/2))
+        w2output(reservationId=res_id,
+                 message='Queuing {} Bi-Dir routes for connection'.format(len(bi_dir)/2))
         cs_helper.get_api_session().ConnectRoutesInReservation(reservationId=res_id, endpoints=bi_dir,
                                                                mappingType='bi')
     except CloudShellAPIError as err:
@@ -31,7 +32,8 @@ if len(bi_dir) > 0:
 
 if len(uni_dir) > 0:
     try:
-        w2output('Queuing {} Uni-Dir routes for connection'.format(len(uni_dir)/2))
+        w2output(reservationId=res_id,
+                 message='Queuing {} Uni-Dir routes for connection'.format(len(uni_dir)/2))
         cs_helper.get_api_session().ConnectRoutesInReservation(reservationId=res_id, endpoints=uni_dir,
                                                                mappingType='uni')
     except CloudShellAPIError as err:
