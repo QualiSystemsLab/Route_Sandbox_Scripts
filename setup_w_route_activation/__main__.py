@@ -9,11 +9,11 @@ def main():
     route_details = sandbox.automation_api.GetReservationDetails(sandbox.id).ReservationDescription.TopologiesRouteInfo
 
     # stage hooks:
-    sandbox.workflow.add_to_connectivity(function=do_topology_setup, components=route_details)
+    sandbox.workflow.add_to_connectivity(function=do_route_connections, components=route_details)
     sandbox.execute_setup()
 
 
-def do_topology_setup(sandbox, components):
+def do_route_connections(sandbox, components):
     """
     examines the routes listed for the sandbox being activated, and creates two lists of routes to be created
     (bi & uni-directional).  Lists passed into the ConnectRoutesInReservation are just paired endpoints
