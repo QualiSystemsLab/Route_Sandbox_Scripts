@@ -37,8 +37,8 @@ def do_route_connections(sandbox, components):
     # set bi-directional routes
     if len(bi_direction) > 0:
         try:
-            sandbox.automation_api.WriteMessageToReservationOutput(
-                'Queuing {} Bi-Dir routes for connection'.format(len(bi_direction) / 2))
+            sandbox.automation_api.WriteMessageToReservationOutput(reservationId=sandbox.id,
+                message='Queuing {} Bi-Dir routes for connection'.format(len(bi_direction) / 2))
 
             sandbox.automation_api.ConnectRoutesInReservation(reservationId=sandbox.id,
                                                               endpoints=bi_direction, mappingType='bi')
@@ -48,8 +48,8 @@ def do_route_connections(sandbox, components):
     # set uni-directional routes
     if len(uni_direction) > 0:
         try:
-            sandbox.automation_api.WriteMessageToReservationOutput(
-                'Queuing {} Uni-Dir routes for connection'.format(len(uni_direction) / 2))
+            sandbox.automation_api.WriteMessageToReservationOutput(reservationId=sandbox.id,
+                message='Queuing {} Uni-Dir routes for connection'.format(len(uni_direction) / 2))
 
             sandbox.automation_api.ConnectRoutesInReservation(reservationId=sandbox.id,
                                                               endpoints=uni_direction, mappingType='uni')
