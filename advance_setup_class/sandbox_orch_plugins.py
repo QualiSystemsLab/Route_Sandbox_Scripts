@@ -16,7 +16,7 @@ class ResourceCommandHelper(object):
                                 *Connected Commands can only Execute
         :param OrderedDict inputs: Key == Input Name, Value == Input Value
         """
-        self.name = command_name
+        self.command_name = command_name
         self.device_name = device_name.upper()
         self.family_name = device_family.upper()
         self.model_name = device_model.upper()
@@ -33,7 +33,7 @@ class ServiceCommandHelper(object):
         :param string run_type: Enqueue or Execute this command (fire and forget vs wait to complete)
         :param OrderedDict inputs: Key == Input Name, Value == Input Value
         """
-        self.name = command_name
+        self.command_name = command_name
         self.service_name = service_name.upper()
         self.run_type = run_type.upper()
         self.parameters = inputs
@@ -63,6 +63,18 @@ class SandboxOrchPlugins(object):
             sandbox.automation_api.GetResourceConnectedCommands(device_name).Commands)
 
         return reg_commands, con_commands
+
+    def _build_command_params(self, param_dict):
+        """
+
+        :param dict param_dict:
+        :return: list str out: list of inputs with value [input1, value1, input2, value2, ... inputN, valueN]
+        """
+        out = []
+        for key in param_dict.keys():
+            out.append(InputNameValue(key, param_dict[key]))
+
+        return out
 
     def connect_all_routes(self, sandbox, components):
         """
@@ -152,7 +164,7 @@ class SandboxOrchPlugins(object):
         """
         result = False
 
-        if components.name == '':  # if the command is blank, stop here
+        if components.command_name == '':  # if the command is blank, stop here
             return result
 
         devices = sandbox.components.resources
@@ -162,25 +174,23 @@ class SandboxOrchPlugins(object):
             reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             if len(reg_commands) > 0:
-                if components.name in reg_commands:
+                if components.command_name in reg_commands:
                     reg_cmd_check = True
-                    params = []
-                    for key in components.parameters.keys():
-                        params.append(InputNameValue(key, components.parameters[key]))
+                    params = self._build_command_params(components.parameters)
 
                     try:
                         if components.run_type == 'EXECUTE':
                             sandbox.automation_api.ExecuteCommand(reservationId=sandbox.id,
                                                                   targetName=device,
                                                                   targetType='Resource',
-                                                                  commandName=components.name,
+                                                                  commandName=components.command_name,
                                                                   commandInputs=params)
                             result = True
                         elif components.run_type == 'ENQUEUE':
                             sandbox.automation_api.EnqueueCommand(reservationId=sandbox.id,
                                                                   targetName=device,
                                                                   targetType='Resource',
-                                                                  commandName=components.name,
+                                                                  commandName=components.command_name,
                                                                   commandInputs=params)
                             result = True
                     except Exception as err:
@@ -188,15 +198,12 @@ class SandboxOrchPlugins(object):
                                                                                message=err.message)
 
             if len(con_commands) > 0 and not reg_cmd_check:
-                if components.name in con_commands:
+                if components.command_name in con_commands:
                     try:
-                        params = []
-                        for key in components.parameters.keys():
-                            params.append(InputNameValue(key, components.parameters[key]))
-
+                        params = self._build_command_params(components.parameters)
                         sandbox.automation_api.ExecuteResourceConnectedCommand(reservationId=sandbox.id,
                                                                                resourceFullPath=device,
-                                                                               commandName=components.name,
+                                                                               commandName=components.command_name,
                                                                                parameterValues=params)
                         result = True
                     except Exception as err:
@@ -214,7 +221,7 @@ class SandboxOrchPlugins(object):
         """
         result = False
 
-        if components.name == '':  # if the command is blank, stop here
+        if components.command_name == '':  # if the command is blank, stop here
             return result
 
         devices = sandbox.components.resources
@@ -250,25 +257,23 @@ class SandboxOrchPlugins(object):
                 reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             if len(reg_commands) > 0:
-                if components.name in reg_commands:
+                if components.command_name in reg_commands:
                     reg_cmd_check = True
-                    params = []
-                    for key in components.parameters.keys():
-                        params.append(InputNameValue(key, components.parameters[key]))
+                    params = self._build_command_params(components.parameters)
 
                     try:
                         if components.run_type == 'EXECUTE':
                             sandbox.automation_api.ExecuteCommand(reservationId=sandbox.id,
                                                                   targetName=device,
                                                                   targetType='Resource',
-                                                                  commandName=components.name,
+                                                                  commandName=components.command_name,
                                                                   commandInputs=params)
                             result = True
                         elif components.run_type == 'ENQUEUE':
                             sandbox.automation_api.EnqueueCommand(reservationId=sandbox.id,
                                                                   targetName=device,
                                                                   targetType='Resource',
-                                                                  commandName=components.name,
+                                                                  commandName=components.command_name,
                                                                   commandInputs=params)
                             result = True
                     except Exception as err:
@@ -276,15 +281,13 @@ class SandboxOrchPlugins(object):
                                                                                message=err.message)
 
             if len(con_commands) > 0 and not reg_cmd_check:
-                if components.name in con_commands:
+                if components.command_name in con_commands:
                     try:
-                        params = []
-                        for key in components.parameters.keys():
-                            params.append(InputNameValue(key, components.parameters[key]))
+                        params = self._build_command_params(components.parameters)
 
                         sandbox.automation_api.ExecuteResourceConnectedCommand(reservationId=sandbox.id,
                                                                                resourceFullPath=device,
-                                                                               commandName=components.name,
+                                                                               commandName=components.command_name,
                                                                                parameterValues=params)
                         result = True
                     except Exception as err:
@@ -298,9 +301,39 @@ class SandboxOrchPlugins(object):
 
         :param Sandbox sandbox:
         :param ServiceCommandHelper components:
-        :return: None
+        :return: bool result:
         """
+        result = False
         command_list = []
         cmds = sandbox.automation_api.GetServiceCommands(components.service_name)
         for cmd in cmds:
             command_list.append(cmd.Name)
+
+        services = sandbox.components.services
+        for each in services:
+            # is this the service (droid) we're looking for?
+            if each.ServiceName == components.service_name:
+                # verify command is present
+                if components.command_name in command_list:
+                    params = self._build_command_params(components.parameters)
+
+                    try:
+                        if components.run_type == 'EXECUTE':
+                            sandbox.automation_api.ExecuteCommand(reservationId=sandbox.id,
+                                                                  targetName=components.service_name,
+                                                                  targetType='Service',
+                                                                  commandName=components.command_name,
+                                                                  commandInputs=params)
+                            result = True
+                        if components.run_type == 'ENQUEUE':
+                            sandbox.automation_api.EnqueueCommand(reservationId=sandbox.id,
+                                                                  targetName=components.command_name,
+                                                                  targetType='Service',
+                                                                  commandName=components.command_name,
+                                                                  commandInputs=params)
+                            result = True
+                    except Exception as err:
+                        sandbox.automation_api.WriteMessageToReservationOutput(reservationId=sandbox.id,
+                                                                               message=err.message)
+
+        return result
