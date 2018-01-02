@@ -34,7 +34,7 @@ class ServiceCommandHelper(object):
         :param OrderedDict inputs: Key == Input Name, Value == Input Value
         """
         self.name = command_name
-        self.service_name = service_name
+        self.service_name = service_name.upper()
         self.run_type = run_type.upper()
         self.parameters = inputs
 
@@ -54,6 +54,15 @@ class SandboxOrchPlugins(object):
             commands.append(each.Name)
 
         return commands
+
+    def _build_resource_command_lists(self, sandbox, device_name):
+        reg_commands = self._build_cmd_list_from_cmdlistinfo(
+            sandbox.automation_api.GetResourceCommands(device_name).Commands)
+
+        con_commands = self._build_cmd_list_from_cmdlistinfo(
+            sandbox.automation_api.GetResourceConnectedCommands(device_name).Commands)
+
+        return reg_commands, con_commands
 
     def connect_all_routes(self, sandbox, components):
         """
@@ -147,17 +156,10 @@ class SandboxOrchPlugins(object):
             return result
 
         devices = sandbox.components.resources
-        reg_commands = []  # commands as part of the Shell/Driver
-        con_commands = []  # commands inherited via connection (Power)
-
         for device in devices:
             reg_cmd_check = False
 
-            reg_commands = self._build_cmd_list_from_cmdlistinfo(
-                sandbox.automation_api.GetResourceCommands(device).Commands)
-
-            con_commands = self._build_cmd_list_from_cmdlistinfo(
-                sandbox.automation_api.GetResourceConnectedCommands(device).Commands)
+            reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             if len(reg_commands) > 0:
                 if components.name in reg_commands:
@@ -223,40 +225,29 @@ class SandboxOrchPlugins(object):
             reg_cmd_check = False
             resource = sandbox.automation_api.GetResourceDetails(device)
 
+            # build commands lists on the device is conditions are meet
+            # - A specific device name is meet
+            # - Matches Specific Family / Model combo
+            # - Matches Specific Model Name, no Family Name specified (as Model Names a unique, this is an edge case)
+            # - Matches Specific Family Name, no Model Name specified
             if components.device_name == device.upper():
 
-                reg_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceCommands(device).Commands)
-
-                con_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceConnectedCommands(device).Commands)
+                reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             elif components.family_name == resource.ResourceFamilyName.upper() and \
                     components.model_name == resource.ResourceModelName.upper() and components.device_name == '':
 
-                reg_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceCommands(device).Commands)
-
-                con_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceConnectedCommands(device).Commands)
+                reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             elif components.model_name == resource.ResourceModelName.upper() and \
                     components.family_name == '' and components.device_name == '':
 
-                reg_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceCommands(device).Commands)
-
-                con_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceConnectedCommands(device).Commands)
+                reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             elif components.family_name == resource.ResourceFamilyName.upper() and \
                     components.model_name == '' and components.device_name == '':
 
-                reg_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceCommands(device).Commands)
-
-                con_commands = self._build_cmd_list_from_cmdlistinfo(
-                    sandbox.automation_api.GetResourceConnectedCommands(device).Commands)
+                reg_commands, con_commands = self._build_resource_command_lists(sandbox, device)
 
             if len(reg_commands) > 0:
                 if components.name in reg_commands:
@@ -301,3 +292,15 @@ class SandboxOrchPlugins(object):
                                                                                message=err.message)
 
         return result
+
+    def run_resource_command(self, sandbox, components):
+        """
+
+        :param Sandbox sandbox:
+        :param ServiceCommandHelper components:
+        :return: None
+        """
+        command_list = []
+        cmds = sandbox.automation_api.GetServiceCommands(components.service_name)
+        for cmd in cmds:
+            command_list.append(cmd.Name)
