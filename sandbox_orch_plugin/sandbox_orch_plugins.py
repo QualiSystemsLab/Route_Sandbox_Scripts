@@ -45,9 +45,9 @@ class SandboxOrchPlugins(object):
 
     def _build_cmd_list_from_cmdlistinfo(self, command_list):
         """
-
-        :param ResourceCommandListInfo command_list:
-        :return: List commands:
+        builds
+        :param list ResourceCommandListInfo command_list:
+        :return: list commands:
         """
         commands = []
         for each in command_list:
@@ -56,6 +56,12 @@ class SandboxOrchPlugins(object):
         return commands
 
     def _build_resource_command_lists(self, sandbox, device_name):
+        """
+
+        :param Sandbox sandbox:
+        :param str device_name:
+        :return: list str reg_commands, con_commands:  Returns two lists, Regular Commands & Connected Commands
+        """
         reg_commands = self._build_cmd_list_from_cmdlistinfo(
             sandbox.automation_api.GetResourceCommands(device_name).Commands)
 
@@ -296,7 +302,7 @@ class SandboxOrchPlugins(object):
 
         return result
 
-    def run_resource_command(self, sandbox, components):
+    def run_service_command(self, sandbox, components):
         """
 
         :param Sandbox sandbox:
