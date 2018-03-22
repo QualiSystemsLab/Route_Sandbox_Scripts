@@ -39,6 +39,23 @@ class ServiceCommandHelper(object):
         self.parameters = inputs
 
 
+class RouteCommandHelper(object):
+    def __init__(self, device_name='', device_family='', device_model='', route_type='', evaluate_connection_by='Either'):
+        """
+        Designed to allow qualifiers to be used with determining which routes to activate or deactivate
+        :param device_name: Name of the Exact Device to use
+        :param device_family: Name of the Device Family
+        :param device_model:
+        :param route_type:
+        :param str evaluate_connection_by:  Judge Route by 'Source', 'Target' or 'Either'
+        """
+        self.device_name = device_name.upper()
+        self.device_family = device_family.upper()
+        self.device_model = device_model.upper()
+        self.route_type = route_type.upper()
+        self.evaluate_by = evaluate_connection_by.upper()
+
+
 class SandboxOrchPlugins(object):
     def __init__(self):
         pass
@@ -150,9 +167,159 @@ class SandboxOrchPlugins(object):
 
         if len(routes) > 0:
             try:
-                ('Queueing {} Routes for disconnection'.format(len(routes) / 2))
+                w2output(sandbox.id,
+                         'Queueing {} Routes for disconnection'.format(len(routes) / 2))
                 sandbox.automation_api.DisconnectRoutesInReservation(reservationId=sandbox.id,
                                                                      endpoints=routes)
+                result = True
+            except Exception as err:
+                w2output(reservationId=sandbox.id, message=err.message)
+
+        return result
+
+    def connect_select_routes_by_type(self, sandbox, components):
+        """
+        Connect Routes if they are ["Bi" or "Uni"]
+        :param Sandbox sandbox:
+        :param RouteCommandHelper components:
+        :return:
+        """
+        result = False
+        if components.route_type != '':
+            w2output = sandbox.automation_api.WriteMessageToReservationOutput
+            tar_routes = []
+            routes = sandbox.automation_api.GetReservationDetails(sandbox.id).ReservationDescription.TopologiesRouteInfo
+            for route in routes:
+                for r in route:
+                    if r.RouteType.upper() == components.route_type:
+                        tar_routes.append(r.Source)
+                        tar_routes.append(r.Target)
+            try:
+                w2output(sandbox.id, 'Queuing Connection of {} {} Routes'.format(len(tar_routes)/2,
+                                                                                 components.route_type)
+                         )
+                sandbox.automation_api.ConnectRoutesInReservation(reservationId=sandbox.id, endpoints=tar_routes,
+                                                                  mappingType=components.route_type.lower())
+                result = True
+            except Exception as err:
+                w2output(reservationId=sandbox.id, message=err.message)
+
+        return result
+
+    def disconnect_select_routes_by_type(self, sandbox, components):
+        """
+        Connect Routes if they are ["Bi" or "Uni"]
+        :param Sandbox sandbox:
+        :param RouteCommandHelper components:
+        :return:
+        """
+        result = False
+        if components.route_type != '':
+            w2output = sandbox.automation_api.WriteMessageToReservationOutput
+            tar_routes = []
+            routes = sandbox.automation_api.GetReservationDetails(sandbox.id).ReservationDescription.TopologiesRouteInfo
+            for route in routes:
+                for r in route:
+                    if r.RouteType.upper() == components.route_type:
+                        tar_routes.append(r.Source)
+                        tar_routes.append(r.Target)
+            try:
+                w2output(sandbox.id, 'Queuing Connection of {} {} Routes'.format(len(tar_routes)/2,
+                                                                                 components.route_type)
+                         )
+                sandbox.automation_api.DisconnectRoutesInReservation(reservationId=sandbox.id, endpoints=tar_routes,
+                                                                     mappingType=components.route_type.lower())
+                result = True
+            except Exception as err:
+                w2output(reservationId=sandbox.id, message=err.message)
+
+        return result
+
+    def connect_routes_by_device_type(self, sandbox, components):
+        """
+        Connect Routes if they are ["Bi" or "Uni"]
+        :param Sandbox sandbox:
+        :param RouteCommandHelper components:
+        :return:
+        """
+        result = False
+        if components.route_type != '':
+            w2output = sandbox.automation_api.WriteMessageToReservationOutput
+            bi_routes = []
+            uni_routes = []
+            devices = sandbox.components.resources
+            matching_devices = []
+            for device in devices:
+                family = sandbox.automation_api.GetResourceDetails(device).ResourceFamilyName
+                model = sandbox.automation_api.GetResourceDetails(device).ResourceModelName
+                if components.device_family == family:
+                    matching_devices.append(device)
+                elif components.device_model == model:
+                    matching_devices.append(device)
+                elif components.device_name.upper() in device.upper():
+                    matching_devices.append(device)
+            routes = sandbox.automation_api.GetReservationDetails(sandbox.id).ReservationDescription.TopologiesRouteInfo
+            for route in routes:
+                for r in route:
+                    base_target = r.Target.split('/')[0]
+                    base_source = r.Source.split('/')[0]
+                    if base_source in matching_devices or base_target in matching_devices:
+                        if r.RouteType.upper() == 'BI':
+                            bi_routes.append(r.Source)
+                            bi_routes.append(r.Target)
+                        if r.RouteType.upper() == 'UNI':
+                            uni_routes.append(r.Source)
+                            uni_routes.append(r.Target)
+            try:
+                # Bi-Routes
+                w2output(sandbox.id, 'Queuing Connection of {} {} Routes'.format(len(bi_routes) / 2, 'Bi-Directional'))
+                sandbox.automation_api.ConnectRoutesInReservation(reservationId=sandbox.id, endpoints=bi_routes,
+                                                                  mappingType=components.route_type.lower())
+                # Uni-Routes
+                w2output(sandbox.id, 'Queuing Connection of {} {} Routes'.format(len(uni_routes) / 2, 'Uni'))
+                sandbox.automation_api.ConnectRoutesInReservation(reservationId=sandbox.id, endpoints=uni_routes,
+                                                                  mappingType=components.route_type.lower())
+                result = True
+            except Exception as err:
+                w2output(reservationId=sandbox.id, message=err.message)
+
+        return result
+
+    def disconnect_routes_by_device_type(self, sandbox, components):
+        """
+        :param Sandbox sandbox:
+        :param RouteCommandHelper components:
+        :return: Boolean:  If it did something w/out error - no route changes will still return false
+        """
+        result = False
+        if components.route_type != '':
+            w2output = sandbox.automation_api.WriteMessageToReservationOutput
+            tar_routes = []
+            devices = sandbox.components.resources
+            matching_devices = []
+            for device in devices:
+                family = sandbox.automation_api.GetResourceDetails(device).ResourceFamilyName
+                model = sandbox.automation_api.GetResourceDetails(device).ResourceModelName
+                if components.device_family == family:
+                    matching_devices.append(device)
+                elif components.device_model == model:
+                    matching_devices.append(device)
+                elif components.device_name.upper() in device.upper():
+                    matching_devices.append(device)
+            routes = sandbox.automation_api.GetReservationDetails(sandbox.id).ReservationDescription.TopologiesRouteInfo
+            for route in routes:
+                for r in route:
+                    base_target = r.Target.split('/')[0]
+                    base_source = r.Source.split('/')[0]
+                    if base_target in matching_devices or base_source in matching_devices:
+                        tar_routes.append(r.Target)
+                        tar_routes.append(r.Source)
+
+            try:
+                w2output(sandbox.id, 'Queuing Connection of {} {} Routes'.format(len(tar_routes)/2,
+                                                                                 components.route_type)
+                         )
+                sandbox.automation_api.DisconnectRoutesInReservation(reservationId=sandbox.id, endpoints=tar_routes)
                 result = True
             except Exception as err:
                 w2output(reservationId=sandbox.id, message=err.message)

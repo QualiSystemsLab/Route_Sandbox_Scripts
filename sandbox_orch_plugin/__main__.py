@@ -16,7 +16,7 @@ def main():
     # stage hooks:
     sandbox.workflow.add_to_configuration(function=SandboxOrchPlugins().run_resource_command_on_all,
                                           components=cmd_helper)
-    sandbox.execute_setup()
 
+    sandbox.execute_setup()
 
 main()

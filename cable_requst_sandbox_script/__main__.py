@@ -48,7 +48,6 @@ def main():
         if route.RouteType == 'cable':
             cable_req.append(route)
 
-
     if len(cable_req) > 0:
         owner = sandbox.reservationContextDetails.owner_user
         email = sandbox.automation_api.GetUserDetails(username=owner).Email
